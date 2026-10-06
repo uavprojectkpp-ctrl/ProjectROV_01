@@ -1,0 +1,136 @@
+{
+ "rules": {
+  ".read": false,
+  ".write": false,
+  "requests": {
+   ".read": "auth!=null&&auth.token.email==='OWNER_EMAIL@gmail.com'&&auth.token.email_verified===true",
+   "$uid": {
+    ".read": "auth!=null&&auth.uid===$uid",
+    ".write": "(auth!=null&&auth.token.email==='OWNER_EMAIL@gmail.com'&&auth.token.email_verified===true)||(auth!=null&&auth.uid===$uid&&newData.child('status').val()==='pending'&&(!data.exists()||data.child('status').val()!=='approved'))||(auth!=null&&auth.uid===$uid&&!newData.exists())",
+    ".validate": "!newData.exists()||newData.hasChildren(['status','name','email','ts'])",
+    "status": {
+     ".validate": "newData.val()==='pending'||newData.val()==='approved'"
+    },
+    "name": {
+     ".validate": "newData.isString()&&newData.val().length<=80"
+    },
+    "email": {
+     ".validate": "newData.isString()&&newData.val().length<=120"
+    },
+    "ts": {
+     ".validate": "newData.isNumber()"
+    },
+    "$o": {
+     ".validate": false
+    }
+   }
+  },
+  "grants": {
+   "$uid": {
+    ".read": "auth!=null&&auth.token.email==='OWNER_EMAIL@gmail.com'&&auth.token.email_verified===true",
+    ".write": "auth!=null&&auth.token.email==='OWNER_EMAIL@gmail.com'&&auth.token.email_verified===true"
+   }
+  },
+  "controller": {
+   ".read": "(auth!=null&&auth.token.email==='OWNER_EMAIL@gmail.com'&&auth.token.email_verified===true)||(auth!=null&&auth.uid==='DEVICE_UID')||(auth!=null&&data.child('uid').val()===auth.uid)",
+   ".write": "(auth!=null&&auth.token.email==='OWNER_EMAIL@gmail.com'&&auth.token.email_verified===true)||(auth!=null&&((!newData.exists()&&data.child('uid').val()===auth.uid)||(newData.child('uid').val()===auth.uid&&data.child('uid').val()===auth.uid&&newData.child('code').val()===data.child('code').val())||(newData.child('uid').val()===auth.uid&&newData.child('code').val()===root.child('grants').child(auth.uid).child('code').val()&&root.child('grants').child(auth.uid).child('exp').val()>now&&(!data.exists()||data.child('hb').val()<now-15000))))",
+   ".validate": "!newData.exists()||newData.hasChildren(['uid','code','since','hb'])",
+   "code": {
+    ".validate": "newData.isString()&&newData.val().length<=40"
+   },
+   "name": {
+    ".validate": "newData.isString()&&newData.val().length<=80"
+   },
+   "email": {
+    ".validate": "newData.isString()&&newData.val().length<=120"
+   }
+  },
+  "cmd": {
+   ".read": "auth!=null&&auth.uid==='DEVICE_UID'",
+   ".write": "auth!=null&&root.child('controller/uid').val()===auth.uid",
+   "V1": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V2": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V6": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V8": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V9": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V11": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V12": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V29": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V30": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V37": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V38": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V39": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V40": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V41": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V42": {
+    ".validate": "newData.isNumber()&&(newData.val()===0||newData.val()===1)"
+   },
+   "V10": {
+    ".validate": "newData.isNumber()&&newData.val()>=-255&&newData.val()<=255"
+   },
+   "V26": {
+    ".validate": "newData.isNumber()&&newData.val()>=-255&&newData.val()<=255"
+   },
+   "V43": {
+    ".validate": "newData.isNumber()&&newData.val()>=0&&newData.val()<=100"
+   },
+   "V34": {
+    ".validate": "newData.isNumber()&&newData.val()>=1&&newData.val()<=3600"
+   },
+   "V35": {
+    ".validate": "newData.isNumber()&&newData.val()>=0.5&&newData.val()<=2"
+   },
+   "V36": {
+    ".validate": "newData.isNumber()&&newData.val()>=0.5&&newData.val()<=5"
+   },
+   "$other": {
+    ".validate": false
+   }
+  },
+  "wifi": {
+   ".read": "auth!=null&&auth.uid==='DEVICE_UID'",
+   ".write": "(auth!=null&&auth.token.email==='OWNER_EMAIL@gmail.com'&&auth.token.email_verified===true)||(auth!=null&&auth.uid==='DEVICE_UID')",
+   "V24": {
+    ".validate": "!newData.exists()||(newData.isString()&&newData.val().length<=32)"
+   },
+   "V25": {
+    ".validate": "!newData.exists()||(newData.isString()&&newData.val().length<=64)"
+   },
+   "$o": {
+    ".validate": false
+   }
+  },
+  "tele": {
+   ".read": "(auth!=null&&auth.token.email==='OWNER_EMAIL@gmail.com'&&auth.token.email_verified===true)||(auth!=null&&root.child('controller/uid').val()===auth.uid)",
+   ".write": "auth!=null&&auth.uid==='DEVICE_UID'"
+  }
+ }
+}

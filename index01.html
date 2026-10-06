@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>ROV Remote</title>
+<style>
+:root{--bg:#0e141b;--card:#18222d;--ln:#2a3a4a;--tx:#e6edf3;--mu:#8aa0b4;--ac:#2f9bff;--ok:#2ecc71;--bad:#e5484d;--wn:#f5a524}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px system-ui,"Noto Sans Thai",sans-serif;padding:10px;max-width:760px;margin:auto}
+h3{margin:0 0 8px;font-size:14px;color:var(--mu)}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:12px;padding:12px;margin-bottom:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:1}
+button,input{font:inherit;border-radius:10px;border:1px solid var(--ln);background:#223140;color:var(--tx);padding:12px;min-height:46px}
+button{cursor:pointer;user-select:none;-webkit-user-select:none}
+button.on{background:var(--ok);color:#04210f;border-color:var(--ok)}
+button.led-on{outline:3px solid var(--wn)}
+button.pri{background:var(--ac);border-color:var(--ac);color:#fff}
+button.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+button:disabled{opacity:.4}
+input{width:100%}
+.hide{display:none!important}
+.big{font-size:20px;letter-spacing:2px;word-break:break-all;text-align:center;padding:10px;background:#0b1117;border-radius:10px;user-select:all}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.kv div{background:#0b1117;border-radius:8px;padding:6px;text-align:center}
+.kv b{display:block;font-size:17px}.kv small{color:var(--mu)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--bad);margin-right:6px}.dot.on{background:var(--ok)}
+#stick{width:210px;height:210px;border-radius:50%;background:#0b1117;border:2px solid var(--ln);position:relative;margin:auto;touch-action:none}
+#knob{position:absolute;left:50%;top:50%;width:80px;height:80px;margin:-40px 0 0 -40px;border-radius:50%;background:var(--ac)}
+#emg{min-height:64px;font-size:20px;font-weight:700}
+.msg{color:var(--wn);min-height:18px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="card row"><div><span class="dot" id="dev"></span><b>ROV Remote</b> <small id="devt" style="color:var(--mu)">อุปกรณ์ออฟไลน์</small></div><div style="text-align:right"><small id="who"></small> <button id="logout" class="hide" style="min-height:34px;padding:4px 10px;flex:0">ออก</button></div></div>
+<div class="msg" id="msg"></div>
+
+<div id="vLogin" class="card"><h3>เข้าสู่ระบบ</h3><button class="pri" id="login" style="width:100%">เข้าสู่ระบบด้วย Google</button></div>
+<div id="vReq" class="card hide"><h3>ขอสิทธิ์ควบคุม</h3><p>ต้องได้รับอนุมัติจากเจ้าของเว็บไซต์ แล้วกรอกรหัสที่เจ้าของให้</p><button class="pri" id="req" style="width:100%">ส่งคำขอ</button></div>
+<div id="vWait" class="card hide"><h3>รอเจ้าของอนุมัติ…</h3><button id="cancel" style="width:100%">ยกเลิกคำขอ</button></div>
+<div id="vCode" class="card hide"><h3>เจ้าของอนุมัติแล้ว กรอกรหัสผ่าน 15 ตัว</h3><p><small>ไทย 3 • อังกฤษ 4 • ตัวเลข 5 • อักขระพิเศษ 3 (หมดอายุใน 5 นาที)</small></p><input id="code" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="pri" id="go" style="width:100%;margin-top:8px">ยืนยันและเริ่มควบคุม</button></div>
+
+<div id="own" class="card hide"><h3>เจ้าของ: จัดการสิทธิ์</h3>
+<div id="holder" style="margin-bottom:8px">ไม่มีผู้ควบคุม</div>
+<div class="row"><button id="take">ควบคุมเอง</button><button id="kick" class="bad">ปลดผู้ควบคุม</button></div>
+<div id="reqs"></div><div id="codeBox" class="hide"><p id="codeFor"></p><div class="big" id="codeVal"></div><small>บอกรหัสนี้กับผู้ขอ (ใช้ได้ครั้งเดียว 5 นาที)</small></div>
+<h3 style="margin-top:12px">Wi-Fi ของบอร์ด (V24/V25)</h3><div class="row"><input id="ssid" placeholder="ชื่อ Wi-Fi"><input id="wpass" type="password" placeholder="รหัส Wi-Fi"><button id="wset" style="flex:0">ตั้งค่า</button></div></div>
+
+<div id="vCtl" class="hide">
+<div class="card"><div id="V33" data-t="V33" style="font-weight:600">-</div><div><small data-t="V31" style="color:var(--wn)">-</small> <span data-led="V32">⚠️</span></div></div>
+<div class="card"><button id="emg" class="bad" style="width:100%" data-hold="6">🛑 EMERGENCY (V6)</button>
+<div class="row" style="margin-top:8px"><button data-sw="37">ARM (V37)</button><button data-sw="40">Manual (V40)</button><button data-hold="39">Reset Emergency (V39)</button></div></div>
+<div class="card"><div class="kv">
+<div><small>Roll V3</small><b data-t="V3">-</b></div><div><small>Pitch V4</small><b data-t="V4">-</b></div><div><small>Yaw V5</small><b data-t="V5">-</b></div>
+<div><small>Pressure V13</small><b data-t="V13">-</b></div><div><small>Depth V14</small><b data-t="V14">-</b></div><div><small>ESC % V15</small><b data-t="V15">-</b></div>
+<div><small>Tank1 V27</small><b data-t="V27">-</b></div><div><small>Tank2 V28</small><b data-t="V28">-</b></div><div><small>SD V7</small><b data-led="V7">●</b></div></div></div>
+<div class="card"><h3>Joystick (X=V10 เลี้ยว • Y=V26 หน้า/หลัง)</h3><div id="stick"><div id="knob"></div></div>
+<div class="row" style="margin-top:6px;text-align:center"><small>V18 <b data-t="V18">0</b></small><small>V19 <b data-t="V19">0</b></small><small>V20 <b data-t="V20">0</b></small><small>V21 <b data-t="V21">0</b></small></div></div>
+<div class="card"><h3>ปุ่มกดค้าง</h3><div class="row"><button data-hold="8" data-led="V16">เอียงซ้าย V8</button><button data-hold="9" data-led="V17">เอียงขวา V9</button></div>
+<div class="row" style="margin-top:8px"><button data-hold="11" data-led="V22">ขึ้น V11</button><button data-hold="12" data-led="V23">ลง V12</button></div></div>
+<div class="card"><h3>ESC ท้าย</h3><div class="row"><button data-sw="41">Forward V41</button><button data-sw="42">Reverse V42</button></div>
+<input type="range" id="V43" min="0" max="100" value="0" style="margin-top:8px"><small>ความเร็ว V43: <b id="V43v">0</b></small></div>
+<div class="card"><h3>Lock / วาล์ว / กล้อง</h3><div class="row"><button data-sw="1">Lock ท่า V1</button><button data-sw="2">Lock ลึก V2</button></div>
+<div class="row" style="margin-top:8px"><button data-sw="29">วาล์ว 1 V29</button><button data-sw="30">วาล์ว 2 V30</button></div>
+<div class="row" style="margin-top:8px"><button data-hold="38">📷 ถ่ายรูป V38</button><a id="cam" target="_blank" rel="noopener noreferrer" class="hide" style="flex:1"><button style="width:100%">🎥 เปิดกล้อง V0</button></a></div></div>
+<div class="card"><h3>ตั้งค่า</h3><div class="row"><div><small>เวลาเติมถัง s (V34)</small><input id="V34" type="number" step="any" data-t="V34"></div><div><small>ฐานแรงดัน bar (V35)</small><input id="V35" type="number" step="any"></div><div><small>เป้าผิวน้ำ bar (V36)</small><input id="V36" type="number" step="any"></div></div><button id="cfg" style="width:100%;margin-top:8px">บันทึกค่า</button></div>
+<button id="rel" style="width:100%">ปล่อยสิทธิ์ควบคุม</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+/* ===== แก้ 2 ค่านี้ (ค่า firebase เป็นข้อมูลสาธารณะ ไม่ใช่ความลับ) ===== */
+const CFG={firebase:{apiKey:"YOUR_API_KEY",authDomain:"YOUR_PROJECT.firebaseapp.com",databaseURL:"https://YOUR_PROJECT-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"YOUR_PROJECT",appId:"YOUR_APP_ID"},owner:"OWNER_EMAIL@gmail.com"};
+/* ======================================================================= */
+const $=i=>document.getElementById(i);
+function fatal(t){$('msg').textContent=t;$('msg').style.fontSize='15px';$('login').disabled=true}
+if(typeof firebase==='undefined')fatal('โหลด Firebase ไม่ได้ ตรวจอินเทอร์เน็ต/ตัวบล็อกโฆษณา');
+else if(CFG.firebase.apiKey==='YOUR_API_KEY'||CFG.owner.startsWith('OWNER_'))fatal('ยังไม่ได้ใส่ค่า CFG ใน index.html (apiKey, databaseURL, owner)');
+else if(location.protocol==='file:')fatal('เปิดจากไฟล์ในเครื่องไม่ได้ ต้องเปิดผ่าน https://ชื่อคุณ.github.io/...');
+addEventListener('error',e=>{if(!$('msg').textContent)fatal('ข้อผิดพลาด: '+e.message)});
+const READY=!$('login').disabled;
+let auth,db,TS;
+if(READY){firebase.initializeApp(CFG.firebase);auth=firebase.auth();db=firebase.database();TS=firebase.database.ServerValue.TIMESTAMP}
+let me=null,isOwner=false,holder=null,req=null,tele={},off=0,L=[],q={},qt=null,hb=null,ctl=false,fails=0,lastS=[0,0];
+if(READY)db.ref('.info/serverTimeOffset').on('value',s=>off=s.val()||0);
+const now=()=>Date.now()+off;
+const msg=t=>{$('msg').textContent=t||'';if(t)setTimeout(()=>{if($('msg').textContent===t)$('msg').textContent=''},6000)};
+function on(r,ev,fn,err){r.on(ev,fn,err||(()=>{}));L.push(()=>r.off(ev,fn))}
+function stopAll(){L.forEach(f=>f());L=[];holder=req=null;tele={}}
+
+function render(){
+  const mine=!!(me&&holder&&holder.uid===me.uid);
+  const v={vLogin:!me,vReq:me&&!isOwner&&!mine&&!req,vWait:me&&!isOwner&&!mine&&req&&req.status==='pending',vCode:me&&!isOwner&&!mine&&req&&req.status==='approved',own:me&&isOwner,vCtl:mine};
+  for(const k in v)$(k).classList.toggle('hide',!v[k]);
+  $('logout').classList.toggle('hide',!me);
+  if(mine&&!ctl)startCtl(); if(!mine&&ctl)stopCtl();
+  if(isOwner)$('holder').textContent=holder?('ผู้ควบคุม: '+(holder.name||'')+' <'+(holder.email||'')+'>'):'ไม่มีผู้ควบคุม';
+  $('take').disabled=!!holder;$('kick').disabled=!holder;
+}
+/* ---------- login ---------- */
+$('login').onclick=()=>auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(()=>msg('เข้าสู่ระบบไม่สำเร็จ'));
+$('logout').onclick=()=>{if(ctl)release();auth.signOut()};
+if(READY)auth.onAuthStateChanged(u=>{
+  if(ctl)stopCtl(); stopAll(); me=u;
+  isOwner=!!(u&&u.emailVerified&&u.email===CFG.owner);
+  $('who').textContent=u?(u.displayName||u.email):'';
+  if(u){ watchHolder(); if(isOwner)ownerInit(); else on(db.ref('requests/'+u.uid),'value',s=>{req=s.val();render()}); }
+  render();
+});
+function watchHolder(){ // guests can read /controller only while they hold it (rules) -> cancel callback = lost
+  on(db.ref('controller'),'value',s=>{holder=s.val();render();if(isOwner)cleanup()},()=>{holder=null;render()});
+}
+/* ---------- guest ---------- */
+$('req').onclick=()=>db.ref('requests/'+me.uid).set({status:'pending',name:(me.displayName||'').slice(0,60),email:me.email||'',ts:TS}).catch(()=>msg('ส่งคำขอไม่สำเร็จ'));
+$('cancel').onclick=()=>db.ref('requests/'+me.uid).remove().catch(()=>msg('ยกเลิกไม่ได้ ติดต่อเจ้าของ'));
+$('go').onclick=()=>{
+  if(fails>=3){msg('ผิดหลายครั้ง รอ 20 วินาที');return}
+  const c=$('code').value.normalize('NFC').trim();
+  db.ref('controller').set({uid:me.uid,name:(me.displayName||'').slice(0,60),email:me.email||'',code:c,since:TS,hb:TS})
+   .then(()=>{$('code').value='';fails=0;L.forEach(f=>f());L=[];on(db.ref('requests/'+me.uid),'value',s=>{req=s.val();render()});watchHolder()})
+   .catch(()=>{fails++;if(fails>=3)setTimeout(()=>fails=0,20000);msg('รหัสผิด หมดอายุ หรือมีผู้ควบคุมอยู่แล้ว')});
+};
+/* ---------- owner ---------- */
+function genCode(){
+  const r=n=>{const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]%n};
+  const pick=(s,n)=>Array.from({length:n},()=>s[r(s.length)]);
+  const a=[...pick([...'กขคงจฉชซดตถทนบปผพฟภมยรลวศสหอฮ'],3),...pick([...'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'],4),...pick([...'0123456789'],5),...pick([...'!@#$%^&*?+=-_'],3)];
+  for(let i=a.length-1;i>0;i--){const j=r(i+1);[a[i],a[j]]=[a[j],a[i]]}
+  return a.join('');
+}
+function ownerInit(){
+  on(db.ref('requests'),'value',s=>{
+    const box=$('reqs');box.textContent='';const o=s.val()||{};
+    Object.keys(o).forEach(uid=>{const r=o[uid];const d=document.createElement('div');d.className='row';d.style.marginTop='8px';
+      const t=document.createElement('div');t.textContent=(r.name||'')+' <'+(r.email||'')+'> ['+r.status+']';
+      const ok=document.createElement('button');ok.textContent='อนุมัติ';ok.className='pri';ok.style.flex='0';
+      const no=document.createElement('button');no.textContent='ปฏิเสธ';no.style.flex='0';
+      ok.onclick=()=>{const c=genCode();db.ref().update({['grants/'+uid]:{code:c,exp:now()+300000},['requests/'+uid+'/status']:'approved'}).then(()=>{$('codeFor').textContent='รหัสสำหรับ '+(r.name||r.email);$('codeVal').textContent=c;$('codeBox').classList.remove('hide');setTimeout(()=>{if($('codeVal').textContent===c)$('codeBox').classList.add('hide')},300000)}).catch(()=>msg('อนุมัติไม่สำเร็จ'))};
+      no.onclick=()=>db.ref().update({['requests/'+uid]:null,['grants/'+uid]:null});
+      d.append(t,ok,no);box.append(d)});
+  });
+  on(db.ref('requests'),'child_removed',()=>{});
+}
+function cleanup(){ if(holder&&holder.uid!==me.uid)db.ref().update({['grants/'+holder.uid]:null,['requests/'+holder.uid]:null}).catch(()=>{}); }
+$('kick').onclick=()=>{const h=holder;db.ref().update({controller:null,...(h?{['grants/'+h.uid]:null,['requests/'+h.uid]:null}:{})}).catch(()=>msg('ปลดไม่สำเร็จ'))};
+$('take').onclick=()=>db.ref('controller').set({uid:me.uid,name:me.displayName||'owner',email:me.email,code:'owner',since:TS,hb:TS}).catch(()=>msg('มีผู้ควบคุมอยู่'));
+$('wset').onclick=()=>{db.ref('wifi').update({V24:$('ssid').value,V25:$('wpass').value}).then(()=>{$('wpass').value='';msg('ส่งค่า Wi-Fi แล้ว ดูผลที่ V33')}).catch(()=>msg('ส่งไม่ได้'))};
+/* ---------- control ---------- */
+function startCtl(){
+  ctl=true;
+  hb=setInterval(()=>db.ref('controller/hb').set(TS).catch(()=>{}),2000);
+  const f=s=>{tele[s.key]=s.val();paint(s.key)};
+  const r=db.ref('tele');r.on('child_added',f,()=>{});r.on('child_changed',f,()=>{});L.push(()=>{r.off('child_added',f);r.off('child_changed',f)});
+}
+function stopCtl(){ctl=false;clearInterval(hb);neutral(true);}
+function release(){neutral(true);return db.ref('controller').remove().catch(()=>{})}
+$('rel').onclick=release;
+function send(p,v,imm){q['V'+p]=v;if(imm){flush()}else if(!qt)qt=setTimeout(flush,100)}
+function flush(){clearTimeout(qt);qt=null;const x=q;q={};if(!Object.keys(x).length||!ctl)return;db.ref('cmd').update(x).catch(()=>msg('ส่งคำสั่งไม่ได้'))}
+function neutral(force){[10,26,8,9,11,12,6,38,39].forEach(p=>q['V'+p]=0);lastS=[0,0];$('knob').style.transform='';if(force){const x=q;q={};if(me)db.ref('cmd').update(x).catch(()=>{})}else flush()}
+addEventListener('blur',()=>ctl&&neutral());
+document.addEventListener('visibilitychange',()=>document.hidden&&ctl&&neutral());
+addEventListener('pagehide',()=>ctl&&neutral(true));
+document.querySelectorAll('[data-hold]').forEach(b=>{const p=+b.dataset.hold;
+  b.addEventListener('pointerdown',e=>{b.setPointerCapture(e.pointerId);send(p,1,true)});
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev,()=>send(p,0,true)));
+  b.addEventListener('contextmenu',e=>e.preventDefault())});
+document.querySelectorAll('[data-sw]').forEach(b=>b.onclick=()=>{const p=+b.dataset.sw;send(p,tele['V'+p]==1?0:1,true)});
+$('V43').oninput=e=>{$('V43v').textContent=e.target.value;send(43,+e.target.value)};
+$('cfg').onclick=()=>{[34,35,36].forEach(p=>{const v=parseFloat($('V'+p).value);if(!isNaN(v))send(p,v)});flush()};
+const st=$('stick');
+function mv(e){const r=st.getBoundingClientRect(),R=r.width/2;let x=(e.clientX-r.left-R)/R,y=(e.clientY-r.top-R)/R;const m=Math.hypot(x,y);if(m>1){x/=m;y/=m}
+  $('knob').style.transform=`translate(${x*R*.6}px,${y*R*.6}px)`;const a=Math.round(x*255),b=Math.round(-y*255);
+  if(a!==lastS[0]){send(10,a);lastS[0]=a}if(b!==lastS[1]){send(26,b);lastS[1]=b}}
+st.addEventListener('pointerdown',e=>{st.setPointerCapture(e.pointerId);mv(e)});
+st.addEventListener('pointermove',e=>{if(st.hasPointerCapture(e.pointerId))mv(e)});
+['pointerup','pointercancel'].forEach(ev=>st.addEventListener(ev,()=>{$('knob').style.transform='';lastS=[0,0];send(10,0);send(26,0);flush()}));
+/* ---------- telemetry paint ---------- */
+const fmt=(k,v)=>typeof v==='number'?(Number.isInteger(v)?v:v.toFixed(2)):String(v);
+function paint(k){
+  const v=tele[k];
+  document.querySelectorAll(`[data-t="${k}"]`).forEach(e=>{if(e.tagName==='INPUT'){if(document.activeElement!==e)e.value=v}else e.textContent=fmt(k,v)});
+  document.querySelectorAll(`[data-led="${k}"]`).forEach(e=>e.classList.toggle('led-on',+v>0));
+  document.querySelectorAll(`[data-sw="${k.slice(1)}"]`).forEach(e=>e.classList.toggle('on',+v===1));
+  if(k==='V35'||k==='V36'){const i=$(k);if(document.activeElement!==i)i.value=v}
+  if(k==='V43'&&document.activeElement!==$('V43')){$('V43').value=v;$('V43v').textContent=v}
+  if(k==='V0'){const a=$('cam'),ok=/^https?:\/\//.test(String(v));a.classList.toggle('hide',!ok);if(ok)a.href=v}
+}
+if(READY)setInterval(()=>{const on=tele.ts&&now()-tele.ts<6000;$('dev').classList.toggle('on',!!on);$('devt').textContent=on?'อุปกรณ์ออนไลน์':'อุปกรณ์ออฟไลน์'},1000);
+</script>
+</body>
+</html>
